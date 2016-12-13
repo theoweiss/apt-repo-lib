@@ -38,11 +38,11 @@ public class RepoBuilderTest {
   public void createSigning() throws Exception {
     String id = "88C86652";
     String digest = "SHA512";
-    String keyringPath = "src/test/resources/<add a keyring file here>";
+    String pw = "hans";
+    String keyring = "src/test/resources/secring.gpg";
     String repoDir = "build/apt-repo-test-2";
     String deb1 = "src/test/resources/fake_1.0_arm64.deb";
-    new RepoBuilder(repoDir, true, null, keyring, id, "hans", digest);
-    RepoBuilder builder = new RepoBuilder(repoDir);
+    RepoBuilder builder = new RepoBuilder(repoDir, keyring, id, pw);
     builder.add(deb1);
     builder.create();
   }

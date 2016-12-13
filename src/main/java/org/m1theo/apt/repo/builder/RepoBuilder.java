@@ -51,9 +51,9 @@ public class RepoBuilder {
   private List<File> debFiles = new ArrayList<>();
   private final File repoDir;
   private final boolean sign;
-  private final String passphraseFile;
+  private final File passphraseFile;
   private final File keyring;
-  private final String key;
+  private final String keyId;
   private String passphrase;
   private final String digest;
 
@@ -65,19 +65,19 @@ public class RepoBuilder {
     this(repoDir, false, null, null, null, null, null);
   }
 
-  public RepoBuilder(String repoDir, String keyring, String key, String
+  public RepoBuilder(String repoDir, String keyring, String keyId, String
       passphrase) throws AptRepoException {
-    this(repoDir, true, null, keyring, key, passphrase, DEFAULT_DIGEST);
+    this(repoDir, true, keyring, keyId, passphrase, null, DEFAULT_DIGEST);
   }
 
-  public RepoBuilder(String repoDir, String passphraseFile, String keyring, String key, boolean passwordFromFile)
+  public RepoBuilder(String repoDir, String keyring, String keyId, File passphraseFile)
       throws
       AptRepoException {
-    this(repoDir, true, passphraseFile, keyring, key, null, DEFAULT_DIGEST);
+    this(repoDir, true, keyring, keyId, null, passphraseFile, DEFAULT_DIGEST);
   }
 
-  public RepoBuilder(String repoDir, boolean sign, String passphraseFile, String keyring, String key, String
-      passphrase, String digest) throws AptRepoException {
+  private RepoBuilder(String repoDir, boolean sign, String keyring, String keyId, String
+      passphrase, File passphraseFile, String digest) throws AptRepoException {
     Path repoPath = Paths.get(repoDir);
     if (!Files.exists(repoPath)) {
       if (Files.isDirectory(repoPath.getParent())) {
@@ -90,16 +90,24 @@ public class RepoBuilder {
         throw new AptRepoException("repDir does not exist: " + repoDir);
       }
     }
-    if (!Files.isRegularFile(Paths.get(keyring))) {
-      throw new AptRepoException("keyring does not exist: " + keyring);
+    if (sign) {
+      if (!Files.isRegularFile(Paths.get(keyring))) {
+        throw new AptRepoException("keyring does not exist: " + keyring);
+      }
+      this.passphraseFile = passphraseFile;
+      this.keyring = new File(keyring);
+      this.keyId = keyId;
+      this.passphrase = passphrase;
+      this.digest = digest;
+    } else {
+      this.passphraseFile = null;
+      this.keyring = null;
+      this.keyId = null;
+      this.passphrase = null;
+      this.digest = null;
     }
     this.repoDir = new File(repoDir);
     this.sign = sign;
-    this.passphraseFile = passphraseFile;
-    this.keyring = new File(keyring);
-    this.key = key;
-    this.passphrase = passphrase;
-    this.digest = digest;
   }
 
   public void create() throws AptRepoException {
@@ -222,31 +230,29 @@ public class RepoBuilder {
   }
 
   private void sign() throws AptRepoException {
-    if (passphraseFile != null) {
-      //getLog().debug("passphrase file will be used " + passphraseFile.getAbsolutePath());
-      try {
+    //getLog().debug("passphrase file will be used " + passphraseFile.getAbsolutePath());
+    try {
+      if (passphraseFile != null) {
         BufferedReader pwReader = new BufferedReader(new FileReader(passphraseFile));
         passphrase = pwReader.readLine();
         pwReader.close();
-        final File inReleaseFile = new File(repoDir, INRELEASE);
-        final File releaseGpgFile = new File(repoDir, RELEASEGPG);
-        PGPSigner signer = new PGPSigner(new FileInputStream(keyring), key, passphrase, getDigestCode(digest));
-        signer.clearSignDetached(release.toString(), new FileOutputStream(releaseGpgFile));
-        signer.clearSign(release.toString(), new FileOutputStream(inReleaseFile));
-
-      } catch (FileNotFoundException e) {
-        throw new AptRepoException("file not found", e);
-      } catch (AptRepoException e) {
-        throw new AptRepoException("aptRepoException", e);
-      } catch (IOException e) {
-        throw new AptRepoException("IOException", e);
-      } catch (PGPException e) {
-        throw new AptRepoException("PGPException", e);
-      } catch (GeneralSecurityException e) {
-        throw new AptRepoException("GeneralSecurityException", e);
       }
+      final File inReleaseFile = new File(repoDir, INRELEASE);
+      final File releaseGpgFile = new File(repoDir, RELEASEGPG);
+      PGPSigner signer = new PGPSigner(new FileInputStream(keyring), keyId, passphrase, getDigestCode(digest));
+      signer.clearSignDetached(release.toString(), new FileOutputStream(releaseGpgFile));
+      signer.clearSign(release.toString(), new FileOutputStream(inReleaseFile));
+    } catch (FileNotFoundException e) {
+      throw new AptRepoException("file not found", e);
+    } catch (AptRepoException e) {
+      throw new AptRepoException("aptRepoException", e);
+    } catch (IOException e) {
+      throw new AptRepoException("IOException", e);
+    } catch (PGPException e) {
+      throw new AptRepoException("PGPException", e);
+    } catch (GeneralSecurityException e) {
+      throw new AptRepoException("GeneralSecurityException", e);
     }
-
   }
 
   private static int getDigestCode(String digestName) throws AptRepoException {

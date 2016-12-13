@@ -2,7 +2,7 @@ apply plugin: 'java'
 apply plugin: 'maven'
 
 group = 'org.m1theo'
-version = '0.0.1-SNAPSHOT'
+version = '1.0.0'
 
 description = """apt-repo library"""
 
@@ -10,9 +10,6 @@ sourceCompatibility = 1.7
 targetCompatibility = 1.7
 tasks.withType(JavaCompile) {
 	options.encoding = 'UTF-8'
-}
-
-configurations.all {
 }
 
 repositories {
